@@ -1,7 +1,8 @@
 import { handleConfirm } from '../../server/handlers.js'
-import { json, lowerHeaders, parseBody } from '../../server/http.js'
+import { json, lowerHeaders, parseBody, initBlobs } from '../../server/http.js'
 
 export const handler = async (event) => {
+  initBlobs(event)
   const { status, json: body } = await handleConfirm(
     lowerHeaders(event.headers),
     parseBody(event)
