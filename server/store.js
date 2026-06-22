@@ -9,7 +9,11 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 
-const onNetlify = !!process.env.NETLIFY
+// Use Netlify Blobs when running as a deployed function. NETLIFY is only set at
+// BUILD time, not in the function runtime, so we also check LAMBDA_TASK_ROOT
+// (set in the deployed Lambda, where the filesystem is read-only). Local dev
+// (vite or `netlify dev`) has neither and uses the writable .data file store.
+const onNetlify = !!(process.env.NETLIFY || process.env.LAMBDA_TASK_ROOT)
 
 async function fileBackend() {
   const dir = path.resolve('.data')
