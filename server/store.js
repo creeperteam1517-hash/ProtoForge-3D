@@ -41,9 +41,12 @@ async function fileBackend() {
 
 async function blobBackend() {
   const { getStore } = await import('@netlify/blobs')
-  const s = getStore('wallets')
+  // Strong consistency: wallet logic does set-then-get (e.g. ensureAccount then
+  // getBalance) and reads right after writes across invocations. The default
+  // eventual consistency returns stale/empty data and shows balances as 0.
+  const s = getStore({ name: 'wallets', consistency: 'strong' })
   return {
-    get: async (id) => await s.get(id, { type: 'json' }),
+    get: async (id) => await s.get(id, { type: 'json', consistency: 'strong' }),
     set: async (id, val) => await s.setJSON(id, val),
   }
 }
