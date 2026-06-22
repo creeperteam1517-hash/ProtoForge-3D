@@ -1,0 +1,60 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Token-wallet backend. These must come BEFORE the SPA fallback below so /api/*
+# resolves to the functions instead of index.html.
+[[redirects]]
+  from = "/api/account"
+  to = "/.netlify/functions/account"
+  status = 200
+[[redirects]]
+  from = "/api/balance"
+  to = "/.netlify/functions/balance"
+  status = 200
+[[redirects]]
+  from = "/api/create-checkout"
+  to = "/.netlify/functions/create-checkout"
+  status = 200
+[[redirects]]
+  from = "/api/confirm"
+  to = "/.netlify/functions/confirm"
+  status = 200
+[[redirects]]
+  from = "/api/spend"
+  to = "/.netlify/functions/spend"
+  status = 200
+[[redirects]]
+  from = "/api/me"
+  to = "/.netlify/functions/me"
+  status = 200
+[[redirects]]
+  from = "/api/auth/signup"
+  to = "/.netlify/functions/signup"
+  status = 200
+[[redirects]]
+  from = "/api/auth/login"
+  to = "/.netlify/functions/login"
+  status = 200
+
+# AI generation proxies. The Tripo key is injected server-side by the function
+# (from TRIPO_API_KEY) so it never ships to the browser. /api/proxy downloads
+# the generated GLB server-side to dodge the CDN's missing CORS headers.
+[[redirects]]
+  from = "/api/tripo/*"
+  to = "/.netlify/functions/tripo/:splat"
+  status = 200
+[[redirects]]
+  from = "/api/proxy"
+  to = "/.netlify/functions/proxy"
+  status = 200
+
+# SPA fallback so client-side routing always resolves to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
