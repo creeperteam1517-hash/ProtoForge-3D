@@ -41,12 +41,14 @@ async function fileBackend() {
 
 async function blobBackend() {
   const { getStore } = await import('@netlify/blobs')
-  // Strong consistency: wallet logic does set-then-get (e.g. ensureAccount then
-  // getBalance) and reads right after writes across invocations. The default
-  // eventual consistency returns stale/empty data and shows balances as 0.
-  const s = getStore({ name: 'wallets', consistency: 'strong' })
+  // Strong consistency isn't available to classic Lambda functions (it needs an
+  // uncachedEdgeURL that connectLambda doesn't provide), so we run with the
+  // default eventual consistency. To stay correct, the wallet handlers avoid
+  // reading a key right after writing it — they return the value they just
+  // wrote (see tokens.js / handlers.js).
+  const s = getStore('wallets')
   return {
-    get: async (id) => await s.get(id, { type: 'json', consistency: 'strong' }),
+    get: async (id) => await s.get(id, { type: 'json' }),
     set: async (id, val) => await s.setJSON(id, val),
   }
 }

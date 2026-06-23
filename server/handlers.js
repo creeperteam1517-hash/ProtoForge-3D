@@ -33,8 +33,8 @@ const tokenFrom = (headers = {}) =>
 /** POST /api/account — mint a fresh anonymous account (with starter grant). */
 export async function handleAccount() {
   const id = newId()
-  await ensureAccount(id)
-  return { status: 200, json: { token: sign(id), balance: await getBalance(id) } }
+  const balance = await ensureAccount(id)
+  return { status: 200, json: { token: sign(id), balance } }
 }
 
 /** GET /api/balance */
@@ -121,15 +121,20 @@ export async function handleSignup(headers, body) {
   if (existing && existing.pwHash)
     return { status: 409, json: { error: 'An account with that email already exists. Log in instead.' } }
 
-  await ensureAccount(id)
   const { salt, hash } = hashPassword(password)
-  await setCredentials(id, { email, salt, pwHash: hash })
+  // setCredentials creates the account (with starter grant) if needed and
+  // returns the resulting balance, so we don't read it back from the
+  // eventually-consistent store.
+  let balance = await setCredentials(id, { email, salt, pwHash: hash })
 
   // Fold the caller's anonymous wallet into the new account on first sign-up.
   const anonId = verify(body?.anon)
-  if (anonId && anonId !== id) await mergeWallet(anonId, id)
+  if (anonId && anonId !== id) {
+    const merged = await mergeWallet(anonId, id)
+    if (merged != null) balance = merged
+  }
 
-  return { status: 200, json: { token: sign(id), email, balance: await getBalance(id) } }
+  return { status: 200, json: { token: sign(id), email, balance } }
 }
 
 /** POST /api/auth/login { email, password } -> { token, email, balance } */

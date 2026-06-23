@@ -7,10 +7,16 @@ import { STARTER_TOKENS } from './economy.js'
 
 const blank = () => ({ balance: STARTER_TOKENS, credited: {} })
 
-/** Create the account record (with starter grant) if it doesn't exist yet. */
+/** Create the account record (with starter grant) if it doesn't exist yet.
+ * Returns the current balance so callers don't have to read it back (the store
+ * is eventually consistent, so a read right after a write may be stale). */
 export async function ensureAccount(id) {
   const s = await store()
-  if (!(await s.get(id))) await s.set(id, blank())
+  const existing = await s.get(id)
+  if (existing) return existing.balance
+  const acc = blank()
+  await s.set(id, acc)
+  return acc.balance
 }
 
 export async function getBalance(id) {
@@ -22,7 +28,8 @@ export async function getAccount(id) {
   return await (await store()).get(id)
 }
 
-/** Store email + password credentials on an account (sign-up). */
+/** Store email + password credentials on an account (sign-up). Returns the
+ * account's balance so the caller doesn't read it back from the store. */
 export async function setCredentials(id, { email, salt, pwHash }) {
   const s = await store()
   const acc = (await s.get(id)) || blank()
@@ -30,20 +37,22 @@ export async function setCredentials(id, { email, salt, pwHash }) {
   acc.salt = salt
   acc.pwHash = pwHash
   await s.set(id, acc)
+  return acc.balance
 }
 
 /** Move all tokens from one wallet into another (used to fold an anonymous
  * wallet into a logged-in account). Zeroes the source so it can't merge twice. */
 export async function mergeWallet(fromId, toId) {
-  if (!fromId || fromId === toId) return
+  if (!fromId || fromId === toId) return null
   const s = await store()
   const from = await s.get(fromId)
-  if (!from || !from.balance) return
+  if (!from || !from.balance) return null
   const to = (await s.get(toId)) || blank()
   to.balance += from.balance
   from.balance = 0
   await s.set(toId, to)
   await s.set(fromId, from)
+  return to.balance
 }
 
 /**
